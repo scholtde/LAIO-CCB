@@ -60,11 +60,28 @@ def start(update, context):
     context.user_data[START_OVER] = False
     return SELECTING_REASON
 
+
 def end(update, context):
     """End conversation from InlineKeyboardButton."""
     text = "Thank you for chatting to us! We'll get back to you shortly. " + \
            "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on xxxx xxx xxxx"
     update.callback_query.edit_message_text(text=text)
+
+    return END
+
+
+def end_second_level(update, context):
+    """Return to top level conversation."""
+    context.user_data[START_OVER] = True
+    start(update, context)
+
+    return END
+
+
+def end_third_level(update, context):
+    """Return to 2nd level conversation."""
+    context.user_data[START_OVER] = True
+    general_reason(update, context)
 
     return END
 
@@ -85,32 +102,22 @@ def emergency_reason(update, context):
 
     return END
 
-
+# Second level callbacks
 def general_reason(update, context):
     """Choose to capture, show or go back"""
     text = 'Choose below to capture or show your info.'
     buttons = [[
         InlineKeyboardButton(text='Start Capturing', callback_data=str(SELECTING_FIELD))
     ], [
-        InlineKeyboardButton(text='Show Your Info', callback_data=str(SHOWING)),
+        #InlineKeyboardButton(text='Show Your Info', callback_data=str(SHOWING)),
         InlineKeyboardButton(text='<< Go Back', callback_data=str(END))
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
 
+    context.user_data[START_OVER] = False
+
     return SELECTING_ACTION
-
-
-def capture_info(update, context):
-    """Add information about youself."""
-    #context.user_data[CURRENT_LEVEL] = SELF
-    text = 'Okay, please provide information about yourself.'
-    button = InlineKeyboardButton(text='Add info', callback_data=str(ADD))
-    keyboard = InlineKeyboardMarkup.from_button(button)
-
-    update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-
-    return DESCRIBING_SELF
 
 
 def show_data(update, context):
@@ -139,69 +146,6 @@ def show_data(update, context):
     return SHOWING
 
 
-# Second level conversation callbacks
-def info_level(update, context):
-    """Choose to capture, show or go back"""
-    text = 'Choose below to show the captured info or go back to the top level.'
-    buttons = [[
-        InlineKeyboardButton(text='Start Capturing', callback_data=str(NATIONALITY))
-    ], [
-        InlineKeyboardButton(text='Show data', callback_data=str(SHOWING)),
-        InlineKeyboardButton(text='<< Back', callback_data=str(END))
-    ]]
-    keyboard = InlineKeyboardMarkup(buttons)
-    update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-
-    return SELECTING_ACTION
-
-
-def select_level(update, context):
-    """Choose to add a parent or a child."""
-    text = 'You may add a parent or a child. Also you can show the gathered data or go back.'
-    buttons = [[
-        InlineKeyboardButton(text='Add parent', callback_data=str(NATIONALITY)),
-        InlineKeyboardButton(text='Add child', callback_data=str(IDENTIFICATION))
-    ], [
-        InlineKeyboardButton(text='Show data', callback_data=str(SHOWING)),
-        InlineKeyboardButton(text='Back', callback_data=str(END))
-    ]]
-    keyboard = InlineKeyboardMarkup(buttons)
-    update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-
-    return SELECTING_LEVEL
-
-
-def select_gender(update, context):
-    """Choose to add mother or father."""
-    level = update.callback_query.data
-    context.user_data[CURRENT_LEVEL] = level
-
-    text = 'Please choose, whom to add.'
-
-    male, female = _name_switcher(level)
-
-    buttons = [[
-        InlineKeyboardButton(text='Add ' + male, callback_data=str(MALE)),
-        InlineKeyboardButton(text='Add ' + female, callback_data=str(FEMALE))
-    ], [
-        InlineKeyboardButton(text='Show data', callback_data=str(SHOWING)),
-        InlineKeyboardButton(text='Back', callback_data=str(END))
-    ]]
-
-    keyboard = InlineKeyboardMarkup(buttons)
-    update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-
-    return SELECTING_GENDER
-
-
-def end_second_level(update, context):
-    """Return to top level conversation."""
-    context.user_data[START_OVER] = True
-    start(update, context)
-
-    return END
-
-
 # Third level callbacks
 def select_field(update, context):
     """Select a FIELD to update for the person."""
@@ -222,7 +166,11 @@ def select_field(update, context):
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
 
-    # If we collect FIELDs for a new person, clear the cache and save the gender
+    #text = 'Please select a field to update.'
+    #update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+    #update.message.reply_text(text=text, reply_markup=keyboard)
+
+    # If we collect features for a new person, clear the cache and save the gender
     if not context.user_data.get(START_OVER):
         text = 'Please select a field to update.'
         update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
@@ -232,6 +180,7 @@ def select_field(update, context):
         update.message.reply_text(text=text, reply_markup=keyboard)
 
     context.user_data[START_OVER] = False
+
     return UPDATING_INFO
 
 
@@ -246,30 +195,11 @@ def ask_for_input(update, context):
 
 def save_input(update, context):
     """Save input for FIELD and return to FIELD selection."""
-    ud = context.user_data
-    ud[FIELDS][ud[CURRENT_FIELD]] = update.message.text
+    #context.user_data[FIELDS][context.user_data[CURRENT_FIELD]] = update.message.text
 
-    ud[START_OVER] = True
+    context.user_data[START_OVER] = True
 
     return select_field(update, context)
-
-
-def end_describing(update, context):
-    """End gathering of FIELDs and return to parent conversation."""
-    ud = context.user_data
-    level = ud[CURRENT_LEVEL]
-    if not ud.get(level):
-        ud[level] = []
-    ud[level].append(ud[FIELDS])
-
-    # Print upper level menu
-    if level == SELF:
-        ud[START_OVER] = True
-        start(update, context)
-    else:
-        select_level(update, context)
-
-    return END
 
 
 def stop_nested(update, context):
@@ -299,33 +229,36 @@ def main():
     capture_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(select_field, pattern='^' + str(SELECTING_FIELD) + '$')],
         states={
-            UPDATING_INFO: [CallbackQueryHandler(ask_for_input, pattern='^(?!' + str(END) + ').*$')],
+            UPDATING_INFO: [CallbackQueryHandler(ask_for_input, pattern='^(?!' + str(END) + ').*$'),
+                            ],
             TYPING: [MessageHandler(Filters.text, save_input)],
         },
         fallbacks=[
-            CallbackQueryHandler(end_second_level, pattern='^' + str(END) + '$'),
+            CallbackQueryHandler(end_third_level, pattern='^' + str(END) + '$'),
             CommandHandler('stop', stop_nested)
         ],
         map_to_parent={
-            # Return to top level menu
-            END: SELECTING_REASON,
+            # Return to 2nd level menu
+            END: SELECTING_ACTION,
             # End conversation alltogether
             STOPPING: END,
         }
     )
 
-    # Set up second level ConversationHandler
+    # Set up second level ConversationHandler (selecting action)
     action_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(general_reason, pattern='^' + str(GENERAL) + '$')],
         states={
             SELECTING_ACTION: [capture_conv,
                                CallbackQueryHandler(show_data, pattern='^' + str(SHOWING) + '$'),
-                               CallbackQueryHandler(end, pattern='^' + str(END) + '$')],
+                               CallbackQueryHandler(end_second_level, pattern='^' + str(END) + '$')],
         },
         fallbacks=[
             CommandHandler('stop', stop_nested)
         ],
         map_to_parent={
+            # Return to top level menu
+            END: SELECTING_REASON,
             # Return to second level menu
             #END: CAPTURING,
             # End conversation alltogether
@@ -333,7 +266,7 @@ def main():
         }
     )
 
-    # Set up top level ConversationHandler (selecting action)
+    # Set up top level ConversationHandler (selecting reason)
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -347,8 +280,8 @@ def main():
     )
     # Because the states of the third level conversation map to the ones of the
     # second level conversation, we need to be a bit hacky about that:
-    #conv_handler.states[DESCRIBING_SELF] = conv_handler.states[SELECTING_ACTION]
-    #conv_handler.states[STOPPING] = conv_handler.entry_points
+    #action_conv.states[UPDATING_INFO] = action_conv.states[SELECTING_ACTION]
+    #action_conv.states[STOPPING] = action_conv.entry_points
 
     dp.add_handler(conv_handler)
 
