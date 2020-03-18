@@ -1,2 +1,2 @@
-# LAIO
-LAIO Community Bots
+# LAIO-CCB
+LAIO Community Chat Bots
