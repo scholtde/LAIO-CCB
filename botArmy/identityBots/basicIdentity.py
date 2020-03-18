@@ -17,24 +17,20 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
+# Ensure that the below do not overlap
 # State definitions for top level conversation
-SELECTING_ACTION, GENERAL, EMERGENCY, DESCRIBING_SELF = map(chr, range(4))
+SELECTING_REASON, GENERAL, EMERGENCY = map(chr, range(3))
 # State definitions for second level conversation
-SELECTING_LEVEL, SELECTING_GENDER, SELECTING_NATIONALITY = map(chr, range(5, 8))
-SELECTING_IDENTIFICATION, SELECTING_AGE = map(chr, range(8, 10))
-SELECTING_MOBILE_NUMBER, SELECTING_LOCATION, SELECTING_INFO = map(chr, range(10, 13))
+SELECTING_ACTION, SELECTING_FIELD, START_CAPTURE = map(chr, range(3, 6))
 # State definitions for descriptions conversation
-SELECTING_FIELD, SELECTING_EMERGENCY, TYPING = map(chr, range(13, 16))
+TYPING = map(chr, range(6, 7))
 # Meta states
-STOPPING, SHOWING = map(chr, range(16, 18))
+STOPPING, SHOWING, START_OVER = map(chr, range(7, 10))
+# Different constants for this example
+(FIELDS, NAME, SURNAME, NATIONALITY, IDENTIFICATION, SA_ID, PASSPORT,
+ MOBILE_NUMBER, LOCATION, AGE, GENDER, GO_BACK, UPDATING_INFO, CURRENT_FIELD) = map(chr, range(10, 24))
 # Shortcut for ConversationHandler.END
 END = ConversationHandler.END
-
-# Different constants for this example
-(SELF, GENDER, MALE, FEMALE, AGE, NAME, SURNAME, NATIONALITY, IDENTIFICATION, SA_ID, PASSPORT, MOBILE_NUMBER,
- LOCATION, START_OVER, FIELDS, CURRENT_FIELD, CURRENT_LEVEL) = map(chr, range(18, 35))
-
-INFO_LEVEL, CAPTURING, ADD = map(chr, range(35, 38))
 
 
 # Top level conversation callbacks
@@ -62,14 +58,39 @@ def start(update, context):
         update.message.reply_text(text=text, reply_markup=keyboard)
 
     context.user_data[START_OVER] = False
-    return SELECTING_ACTION
+    return SELECTING_REASON
+
+def end(update, context):
+    """End conversation from InlineKeyboardButton."""
+    text = "Thank you for chatting to us! We'll get back to you shortly. " + \
+           "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on xxxx xxx xxxx"
+    update.callback_query.edit_message_text(text=text)
+
+    return END
 
 
-def general_selected(update, context):
+def stop(update, context):
+    """End Conversation by command."""
+    text = "Thank you for chatting to us! We'll get back to you shortly. " + \
+           "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on xxxx xxx xxxx"
+    update.message.reply_text(text)
+
+    return END
+
+
+def emergency_reason(update, context):
+    """EMERGENCY was chosen. Go to EMERGENCY Bot."""
+    text = 'Okay, for an EMERGENCY click on the below link:\n -> @LAIOCommunityCBCEmergencyBot'
+    update.callback_query.edit_message_text(text=text)
+
+    return END
+
+
+def general_reason(update, context):
     """Choose to capture, show or go back"""
     text = 'Choose below to capture or show your info.'
     buttons = [[
-        InlineKeyboardButton(text='Start Capturing', callback_data=str(CAPTURING))
+        InlineKeyboardButton(text='Start Capturing', callback_data=str(SELECTING_FIELD))
     ], [
         InlineKeyboardButton(text='Show Your Info', callback_data=str(SHOWING)),
         InlineKeyboardButton(text='<< Go Back', callback_data=str(END))
@@ -77,16 +98,7 @@ def general_selected(update, context):
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
 
-    return INFO_LEVEL
-
-
-def emergency_selected(update, context):
-    """Add information about youself."""
-    context.user_data[CURRENT_LEVEL] = SELF
-    text = 'Okay, for an EMERGENCY click on the below link:\n -> @LAIOCommunityCBCEmergencyBot'
-    update.callback_query.edit_message_text(text=text)
-
-    return END
+    return SELECTING_ACTION
 
 
 def capture_info(update, context):
@@ -103,28 +115,18 @@ def capture_info(update, context):
 
 def show_data(update, context):
     """Pretty print gathered data."""
-    def prettyprint(user_data, level):
-        people = user_data.get(level)
-        if not people:
+    def prettyprint(user_data):
+        person = user_data.get(NAME)
+        if not person:
             return '\nNo information yet.'
 
         text = ''
-        if level == SELF:
-            for person in user_data[level]:
-                text += '\nName: {0}, Age: {1}'.format(person.get(NAME, '-'), person.get(AGE, '-'))
-        else:
-            male, female = _name_switcher(level)
+        text += '\nName: {0}, Age: {1}'.format(user_data.get(NAME, '-'), user_data.get(AGE, '-'))
 
-            for person in user_data[level]:
-                gender = female if person[GENDER] == FEMALE else male
-                text += '\n{0}: Name: {1}, Age: {2}'.format(gender, person.get(NAME, '-'),
-                                                            person.get(AGE, '-'))
         return text
 
     ud = context.user_data
-    text = 'Yourself:' + prettyprint(ud, SELF)
-    text += '\n\nParents:' + prettyprint(ud, NATIONALITY)
-    text += '\n\nChildren:' + prettyprint(ud, IDENTIFICATION)
+    text = prettyprint(ud)
 
     buttons = [[
         InlineKeyboardButton(text='Back', callback_data=str(END))
@@ -135,24 +137,6 @@ def show_data(update, context):
     ud[START_OVER] = True
 
     return SHOWING
-
-
-def stop(update, context):
-    """End Conversation by command."""
-    text = "Thank you for chatting to us! We'll get back to you shortly. " + \
-           "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on xxxx xxx xxxx"
-    update.message.reply_text(text)
-
-    return END
-
-
-def end(update, context):
-    """End conversation from InlineKeyboardButton."""
-    text = "Thank you for chatting to us! We'll get back to you shortly. " + \
-           "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on xxxx xxx xxxx"
-    update.callback_query.edit_message_text(text=text)
-
-    return END
 
 
 # Second level conversation callbacks
@@ -240,7 +224,6 @@ def select_field(update, context):
 
     # If we collect FIELDs for a new person, clear the cache and save the gender
     if not context.user_data.get(START_OVER):
-        context.user_data[FIELDS] = {GENDER: update.callback_query.data}
         text = 'Please select a field to update.'
         update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     # But after we do that, we need to send a new message
@@ -249,7 +232,7 @@ def select_field(update, context):
         update.message.reply_text(text=text, reply_markup=keyboard)
 
     context.user_data[START_OVER] = False
-    return SELECTING_FIELD
+    return UPDATING_INFO
 
 
 def ask_for_input(update, context):
@@ -313,43 +296,40 @@ def main():
     dp = updater.dispatcher
 
     # Set up third level ConversationHandler (collecting FIELDS)
-    capture_info_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(select_field, pattern='^' + str(ADD) + '$')],
+    capture_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(select_field, pattern='^' + str(SELECTING_FIELD) + '$')],
         states={
-            SELECTING_FIELD: [CallbackQueryHandler(ask_for_input, pattern='^(?!' + str(END) + ').*$')],
+            UPDATING_INFO: [CallbackQueryHandler(ask_for_input, pattern='^(?!' + str(END) + ').*$')],
             TYPING: [MessageHandler(Filters.text, save_input)],
         },
         fallbacks=[
-            CallbackQueryHandler(end_describing, pattern='^' + str(END) + '$'),
-            CommandHandler('stop', stop_nested)
-        ],
-        map_to_parent={
-            # Return to second level menu
-            END: CAPTURING,
-            # End conversation alltogether
-            STOPPING: STOPPING,
-        }
-    )
-
-    # Set up second level ConversationHandler (adding a person)
-    info_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(capture_info, pattern='^' + str(CAPTURING) + '$'),
-                      CallbackQueryHandler(show_data, pattern='^' + str(SHOWING) + '$')],
-        states={
-            DESCRIBING_SELF: [capture_info_conv],
-        },
-        fallbacks=[
-            CallbackQueryHandler(show_data, pattern='^' + str(SHOWING) + '$'),
             CallbackQueryHandler(end_second_level, pattern='^' + str(END) + '$'),
             CommandHandler('stop', stop_nested)
         ],
         map_to_parent={
-            # After showing data return to top level menu
-            SHOWING: SHOWING,
             # Return to top level menu
-            END: SELECTING_ACTION,
+            END: SELECTING_REASON,
             # End conversation alltogether
             STOPPING: END,
+        }
+    )
+
+    # Set up second level ConversationHandler
+    action_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(general_reason, pattern='^' + str(GENERAL) + '$')],
+        states={
+            SELECTING_ACTION: [capture_conv,
+                               CallbackQueryHandler(show_data, pattern='^' + str(SHOWING) + '$'),
+                               CallbackQueryHandler(end, pattern='^' + str(END) + '$')],
+        },
+        fallbacks=[
+            CommandHandler('stop', stop_nested)
+        ],
+        map_to_parent={
+            # Return to second level menu
+            #END: CAPTURING,
+            # End conversation alltogether
+            STOPPING: STOPPING,
         }
     )
 
@@ -357,13 +337,11 @@ def main():
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            SELECTING_ACTION: [
-                info_conv,
-                CallbackQueryHandler(general_selected, pattern='^' + str(GENERAL) + '$'),
-                CallbackQueryHandler(emergency_selected, pattern='^' + str(EMERGENCY) + '$'),
+            SELECTING_REASON: [
+                action_conv,
+                CallbackQueryHandler(emergency_reason, pattern='^' + str(EMERGENCY) + '$'),
                 CallbackQueryHandler(end, pattern='^' + str(END) + '$'),
             ],
-            INFO_LEVEL: [info_conv],
         },
         fallbacks=[CommandHandler('stop', stop)],
     )
