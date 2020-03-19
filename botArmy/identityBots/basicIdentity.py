@@ -273,7 +273,7 @@ def ask_for_input(update, context):
         text = 'You can choose your gender from the provided buttons'
         context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
 
-    if update.callback_query.data == NATIONALITY:
+    elif update.callback_query.data == NATIONALITY:
         text = 'Okay, please write and send your answer'
         update.callback_query.edit_message_text(text=text, reply_markup=None)
         reply_keyboard = []
