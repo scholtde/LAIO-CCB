@@ -27,8 +27,8 @@ TYPING = map(chr, range(6, 7))
 # Meta states
 STOPPING, SHOWING, START_OVER = map(chr, range(7, 10))
 # Different constants for this example
-(FIELDS, NAME, SURNAME, NATIONALITY, IDENTIFICATION, SA_ID, PASSPORT,
- MOBILE_NUMBER, LOCATION, AGE, GENDER, GO_BACK, UPDATING_INFO, CURRENT_FIELD) = map(chr, range(10, 24))
+(SELF, FIELDS, NAME, SURNAME, NATIONALITY, IDENTIFICATION, SA_ID, PASSPORT,
+ MOBILE_NUMBER, LOCATION, AGE, GENDER, GO_BACK, UPDATING_INFO, CURRENT_LEVEL, CURRENT_FIELD) = map(chr, range(10, 26))
 # Shortcut for ConversationHandler.END
 END = ConversationHandler.END
 
@@ -79,9 +79,16 @@ def end_second_level(update, context):
 
 
 def end_third_level(update, context):
-    """Return to 2nd level conversation."""
-    context.user_data[START_OVER] = True
-    general_reason(update, context)
+    """End gathering of fields and return to 2nd level conversation."""
+    level = context.user_data[CURRENT_LEVEL]
+    if not context.user_data.get(level):
+        context.user_data[level] = []
+    context.user_data[level].append(context.user_data[FIELDS])
+
+    # Print upper level menu
+    if level == SELF:
+        context.user_data[START_OVER] = True
+        general_reason(update, context)
 
     return END
 
@@ -109,31 +116,37 @@ def general_reason(update, context):
     buttons = [[
         InlineKeyboardButton(text='Start Capturing', callback_data=str(SELECTING_FIELD))
     ], [
-        #InlineKeyboardButton(text='Show Your Info', callback_data=str(SHOWING)),
+        InlineKeyboardButton(text='Show Your Info', callback_data=str(SHOWING)),
         InlineKeyboardButton(text='<< Go Back', callback_data=str(END))
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
 
+    # Only 1 Level to capture info for 1 User
+    context.user_data[CURRENT_LEVEL] = SELF
+    # Do not display the startup message..
     context.user_data[START_OVER] = False
 
     return SELECTING_ACTION
 
 
 def show_data(update, context):
-    """Pretty print gathered data."""
-    def prettyprint(user_data):
-        person = user_data.get(NAME)
-        if not person:
+    """Pretty print gathered information."""
+    # Nested function to renturn a pretty string of text containing all information
+    def prettyprint(user_data, level):
+        people = user_data.get(level)
+        if not people:
             return '\nNo information yet.'
 
         text = ''
-        text += '\nName: {0}, Age: {1}'.format(user_data.get(NAME, '-'), user_data.get(AGE, '-'))
+        if level == SELF:
+            for person in user_data[level]:
+                text += '\nName: {0}, Age: {1}'.format(person.get(NAME, '-'), person.get(AGE, '-'))
 
         return text
 
     ud = context.user_data
-    text = prettyprint(ud)
+    text = prettyprint(ud, SELF)
 
     buttons = [[
         InlineKeyboardButton(text='Back', callback_data=str(END))
@@ -150,28 +163,25 @@ def show_data(update, context):
 def select_field(update, context):
     """Select a FIELD to update for the person."""
     buttons = [[
-        InlineKeyboardButton(text='Name', callback_data=str(NAME)),
-        InlineKeyboardButton(text='Surname', callback_data=str(SURNAME)),
+        InlineKeyboardButton(text='Q1: Name', callback_data=str(NAME)),
+        InlineKeyboardButton(text='Q2: Surname', callback_data=str(SURNAME)),
         ], [
-        InlineKeyboardButton(text='Nationality', callback_data=str(NATIONALITY)),
-        InlineKeyboardButton(text='Identification', callback_data=str(IDENTIFICATION)),
+        InlineKeyboardButton(text='Q3: Nationality', callback_data=str(NATIONALITY)),
+        InlineKeyboardButton(text='Q4: Identification', callback_data=str(IDENTIFICATION)),
         ], [
-        InlineKeyboardButton(text='Mobile Number', callback_data=str(MOBILE_NUMBER)),
-        InlineKeyboardButton(text='Location', callback_data=str(LOCATION)),
+        InlineKeyboardButton(text='Q5: Mobile Number', callback_data=str(MOBILE_NUMBER)),
+        InlineKeyboardButton(text='Q6: Location', callback_data=str(LOCATION)),
         ], [
-        InlineKeyboardButton(text='Age', callback_data=str(AGE)),
-        InlineKeyboardButton(text='Gender', callback_data=str(GENDER)),
+        InlineKeyboardButton(text='Q7: Age', callback_data=str(AGE)),
+        InlineKeyboardButton(text='Q8: Gender', callback_data=str(GENDER)),
         ], [
         InlineKeyboardButton(text='Done', callback_data=str(END)),
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
 
-    #text = 'Please select a field to update.'
-    #update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    #update.message.reply_text(text=text, reply_markup=keyboard)
-
     # If we collect features for a new person, clear the cache and save the gender
     if not context.user_data.get(START_OVER):
+        context.user_data[FIELDS] = {}
         text = 'Please select a field to update.'
         update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     # But after we do that, we need to send a new message
@@ -194,8 +204,8 @@ def ask_for_input(update, context):
 
 
 def save_input(update, context):
-    """Save input for FIELD and return to FIELD selection."""
-    #context.user_data[FIELDS][context.user_data[CURRENT_FIELD]] = update.message.text
+    """Save input for FIELD and return to field selection."""
+    context.user_data[FIELDS][context.user_data[CURRENT_FIELD]] = update.message.text
 
     context.user_data[START_OVER] = True
 
@@ -220,7 +230,7 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    updater = Updater("1080497761:AAHCDuZrkPp-WHeWR5jXujDFf8sbIKabhrA", use_context=True)
+    updater = Updater("1141194468:AAH7BF-EzQQpmzh7fo45uG1mU3FSxHBE6KI", use_context=True)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
@@ -249,6 +259,7 @@ def main():
     action_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(general_reason, pattern='^' + str(GENERAL) + '$')],
         states={
+            SHOWING: [CallbackQueryHandler(general_reason, pattern='^' + str(END) + '$')],
             SELECTING_ACTION: [capture_conv,
                                CallbackQueryHandler(show_data, pattern='^' + str(SHOWING) + '$'),
                                CallbackQueryHandler(end_second_level, pattern='^' + str(END) + '$')],
