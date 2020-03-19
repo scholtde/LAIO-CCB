@@ -6,7 +6,9 @@ See Licence in project root
 """
 
 import logging
+import json
 
+from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove)
 from telegram import (InlineKeyboardMarkup, InlineKeyboardButton)
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                           ConversationHandler, CallbackQueryHandler)
@@ -64,6 +66,14 @@ GO_BACK = "GO_BACK"
 UPDATING_INFO = "UPDATING_INFO"
 CURRENT_LEVEL = "CURRENT_LEVEL"
 CURRENT_FIELD = "CURRENT_FIELD"
+
+MALE = "MALE"
+FEMALE = "FEMALE"
+OTHER_GEN = "OTHER_GEN"
+PREFER_NO_GEN = "PREFER_NO_GEN"
+
+f = open("../config/country.json", "r")
+nationality_dict = json.loads(f.read())
 
 # Shortcut for ConversationHandler.END
 END = ConversationHandler.END
@@ -214,17 +224,17 @@ def show_data(update, context):
 def select_field(update, context):
     """Select a FIELD to update for the person."""
     buttons = [[
-        InlineKeyboardButton(text='Q1: Name', callback_data=str(NAME)),
-        InlineKeyboardButton(text='Q2: Surname', callback_data=str(SURNAME)),
+        InlineKeyboardButton(text='Q1: Name?', callback_data=str(NAME)),
+        InlineKeyboardButton(text='Q2: Surname?', callback_data=str(SURNAME)),
         ], [
-        InlineKeyboardButton(text='Q3: Nationality', callback_data=str(NATIONALITY)),
-        InlineKeyboardButton(text='Q4: Identification', callback_data=str(IDENTIFICATION)),
+        InlineKeyboardButton(text='Q3: Nationality?', callback_data=str(NATIONALITY)),
+        InlineKeyboardButton(text='Q4: Identification?', callback_data=str(IDENTIFICATION)),
         ], [
-        InlineKeyboardButton(text='Q5: Mobile Number', callback_data=str(MOBILE_NUMBER)),
-        InlineKeyboardButton(text='Q6: Location', callback_data=str(LOCATION)),
+        InlineKeyboardButton(text='Q5: Mobile Number?', callback_data=str(MOBILE_NUMBER)),
+        InlineKeyboardButton(text='Q6: Location?', callback_data=str(LOCATION)),
         ], [
-        InlineKeyboardButton(text='Q7: Age', callback_data=str(AGE)),
-        InlineKeyboardButton(text='Q8: Gender', callback_data=str(GENDER)),
+        InlineKeyboardButton(text='Q7: Age?', callback_data=str(AGE)),
+        InlineKeyboardButton(text='Q8: Gender?', callback_data=str(GENDER)),
         ], [
         InlineKeyboardButton(text='Done', callback_data=str(END)),
     ]]
@@ -233,11 +243,14 @@ def select_field(update, context):
     # If we collect features for a new person, clear the cache and save the gender
     if not context.user_data.get(START_OVER):
         context.user_data[FIELDS] = {}
-        text = 'Please select a field to update.'
+        text = 'Please complete all the questions. Select the specific question to update it. ' + \
+               'If you made a mistake, please select the question again to correct.'
         update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     # But after we do that, we need to send a new message
     else:
-        text = 'Got it! Please select a field to update.'
+        text = 'Got it!'
+        update.message.reply_text(text=text, reply_markup=ReplyKeyboardRemove())
+        text = 'Please select a question to update.'
         update.message.reply_text(text=text, reply_markup=keyboard)
 
     context.user_data[START_OVER] = False
@@ -248,8 +261,34 @@ def select_field(update, context):
 def ask_for_input(update, context):
     """Prompt user to input data for selected FIELD."""
     context.user_data[CURRENT_FIELD] = update.callback_query.data
-    text = 'Okay, please write and send the information'
-    update.callback_query.edit_message_text(text=text)
+
+    if update.callback_query.data == GENDER:
+        text = 'Okay, please write and send your answer'
+        update.callback_query.edit_message_text(text=text, reply_markup=None)
+
+        reply_keyboard = [['male', 'female'],
+                          ['boy', 'girl'],
+                          ['other', 'prefer not to say']]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+        text = 'You can choose your gender from the provided buttons'
+        context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
+
+    if update.callback_query.data == NATIONALITY:
+        text = 'Okay, please write and send your answer'
+        update.callback_query.edit_message_text(text=text, reply_markup=None)
+        reply_keyboard = []
+        for nation in nationality_dict:
+            reply_keyboard.append([nation["name"]])
+
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+        text = 'You can choose your nationality from the provided buttons'
+        context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
+
+    else:
+        # text = 'Okay great.'
+        # context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=ReplyKeyboardRemove())
+        text = 'Okay, please write and send your answer'
+        update.callback_query.edit_message_text(text=text, reply_markup=None)
 
     return TYPING
 
@@ -259,26 +298,24 @@ def save_input(update, context):
     level = context.user_data[CURRENT_LEVEL]
     # If there is no key, then create one, this should only happen once
     if not context.user_data.get(level):
-       context.user_data[level] = {
-                    "NAME": None,
-                    "SURNAME": None,
-                    "AGE": None,
-                    "GENDER": None,
-                    "NATIONALITY": None,
-                    "IDENTIFICATION": None,
-                    "SA_ID": None,
-                    "PASSPORT": None,
-                    "MOBILE_NUMBER": None,
-                    "LOCATION": None,
-                }
-       #context.user_data[level] = {}
+       # context.user_data[level] = {
+       #              "NAME": None,
+       #              "SURNAME": None,
+       #              "AGE": None,
+       #              "GENDER": None,
+       #              "NATIONALITY": None,
+       #              "IDENTIFICATION": None,
+       #              "SA_ID": None,
+       #              "PASSPORT": None,
+       #              "MOBILE_NUMBER": None,
+       #              "LOCATION": None,
+       #          }
+       context.user_data[level] = {}
 
-    context.user_data[FIELDS][context.user_data[CURRENT_FIELD]] = update.message.text
 
-    # If there is data in the list, then update the dictionary
-    if context.user_data[level]:
-        # Update the corresponding field in the key
-        context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.text
+    # Update the corresponding field in the key
+    context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.text
+    #context.user_data[FIELDS][context.user_data[CURRENT_FIELD]] = update.message.text
 
     context.user_data[START_OVER] = True
 
@@ -312,9 +349,9 @@ def main():
     capture_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(select_field, pattern='^' + str(SELECTING_FIELD) + '$')],
         states={
-            UPDATING_INFO: [CallbackQueryHandler(ask_for_input, pattern='^(?!' + str(END) + ').*$'),
-                            ],
-            TYPING: [MessageHandler(Filters.text, save_input)],
+            UPDATING_INFO: [CallbackQueryHandler(ask_for_input, pattern='^(?!' + str(END) + ').*$'), ],
+            TYPING: [MessageHandler(Filters.text, save_input), ],
+                     # CallbackQueryHandler(save_input, pattern='^(?!' + str(PREFER_NO_GEN) + ').*$'), ],
         },
         fallbacks=[
             CallbackQueryHandler(end_third_level, pattern='^' + str(END) + '$'),
