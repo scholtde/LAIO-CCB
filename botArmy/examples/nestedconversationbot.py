@@ -122,6 +122,7 @@ def show_data(update, context):
 
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     ud[START_OVER] = True
+    print(context.user_data)
 
     return SHOWING
 

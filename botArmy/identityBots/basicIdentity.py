@@ -17,18 +17,54 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
+# # Ensure that the below do not overlap
+# # State definitions for top level conversation
+# SELECTING_REASON, GENERAL, EMERGENCY = map(chr, range(3))
+# # State definitions for second level conversation
+# SELECTING_ACTION, SELECTING_FIELD, START_CAPTURE = map(chr, range(3, 6))
+# # State definitions for descriptions conversation
+# TYPING = map(chr, range(6, 7))
+# # Meta states
+# STOPPING, SHOWING, START_OVER = map(chr, range(7, 10))
+# # Different constants for this example
+# (SELF, FIELDS, NAME, SURNAME, NATIONALITY, IDENTIFICATION, SA_ID, PASSPORT,
+#  MOBILE_NUMBER, LOCATION, AGE, GENDER, GO_BACK, UPDATING_INFO, CURRENT_LEVEL, CURRENT_FIELD) = map(chr, range(10, 26))
+# # Shortcut for ConversationHandler.END
+# END = ConversationHandler.END
+
 # Ensure that the below do not overlap
 # State definitions for top level conversation
-SELECTING_REASON, GENERAL, EMERGENCY = map(chr, range(3))
+SELECTING_REASON = "SELECTING_REASON"
+GENERAL = "GENERAL"
+EMERGENCY = "EMERGENCY"
 # State definitions for second level conversation
-SELECTING_ACTION, SELECTING_FIELD, START_CAPTURE = map(chr, range(3, 6))
+SELECTING_ACTION = "SELECTING_ACTION"
+SELECTING_FIELD = "SELECTING_FIELD"
+START_CAPTURE = "START_CAPTURE"
 # State definitions for descriptions conversation
-TYPING = map(chr, range(6, 7))
+TYPING = "TYPING"
 # Meta states
-STOPPING, SHOWING, START_OVER = map(chr, range(7, 10))
+STOPPING = "STOPPING"
+SHOWING = "SHOWING"
+START_OVER = "START_OVER"
 # Different constants for this example
-(SELF, FIELDS, NAME, SURNAME, NATIONALITY, IDENTIFICATION, SA_ID, PASSPORT,
- MOBILE_NUMBER, LOCATION, AGE, GENDER, GO_BACK, UPDATING_INFO, CURRENT_LEVEL, CURRENT_FIELD) = map(chr, range(10, 26))
+SELF = "SELF"
+FIELDS = "FIELDS"
+NAME = "NAME"
+SURNAME = "SURNAME"
+AGE = "AGE"
+GENDER = "GENDER"
+NATIONALITY = "NATIONALITY"
+IDENTIFICATION = "IDENTIFICATION"
+SA_ID = "SA_ID"
+PASSPORT = "PASSPORT"
+MOBILE_NUMBER = "MOBILE_NUMBER"
+LOCATION = "LOCATION"
+GO_BACK = "GO_BACK"
+UPDATING_INFO = "UPDATING_INFO"
+CURRENT_LEVEL = "CURRENT_LEVEL"
+CURRENT_FIELD = "CURRENT_FIELD"
+
 # Shortcut for ConversationHandler.END
 END = ConversationHandler.END
 
@@ -81,9 +117,11 @@ def end_second_level(update, context):
 def end_third_level(update, context):
     """End gathering of fields and return to 2nd level conversation."""
     level = context.user_data[CURRENT_LEVEL]
-    if not context.user_data.get(level):
-        context.user_data[level] = []
-    context.user_data[level].append(context.user_data[FIELDS])
+    # if not context.user_data.get(level):
+    #     context.user_data[level] = []
+    #
+    # context.user_data[level].append(context.user_data[FIELDS])
+
 
     # Print upper level menu
     if level == SELF:
@@ -138,10 +176,21 @@ def show_data(update, context):
         if not people:
             return '\nNo information yet.'
 
-        text = ''
+        text = 'Captured Info\n'
+        text += '=============\n\n'
         if level == SELF:
-            for person in user_data[level]:
-                text += '\nName: {0}, Age: {1}'.format(person.get(NAME, '-'), person.get(AGE, '-'))
+            # for person in user_data[level]:
+            #     text += '\nName: {0}, Age: {1}'.format(person.get(NAME, '-'), person.get(AGE, '-'))
+            text += 'Name: {0}\n'.format(user_data[level].get(NAME, '-'))
+            text += 'Surname: {0}\n'.format(user_data[level].get(SURNAME, '-'))
+            text += 'Age: {0}\n'.format(user_data[level].get(AGE, '-'))
+            text += 'Gender: {0}\n'.format(user_data[level].get(GENDER, '-'))
+            text += 'Nationality: {0}\n'.format(user_data[level].get(NATIONALITY, '-'))
+            text += 'Identification type: {0}\n'.format(user_data[level].get(IDENTIFICATION, '-'))
+            text += 'ID: {0}\n'.format(user_data[level].get(SA_ID, '-'))
+            text += 'Passport: {0}\n'.format(user_data[level].get(PASSPORT, '-'))
+            text += 'Mobile number: {0}\n'.format(user_data[level].get(MOBILE_NUMBER, '-'))
+            text += 'Location(gps): {0}\n'.format(user_data[level].get(LOCATION, '-'))
 
         return text
 
@@ -155,6 +204,8 @@ def show_data(update, context):
 
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     ud[START_OVER] = True
+
+    print(context.user_data)
 
     return SHOWING
 
@@ -205,7 +256,29 @@ def ask_for_input(update, context):
 
 def save_input(update, context):
     """Save input for FIELD and return to field selection."""
+    level = context.user_data[CURRENT_LEVEL]
+    # If there is no key, then create one, this should only happen once
+    if not context.user_data.get(level):
+       context.user_data[level] = {
+                    "NAME": None,
+                    "SURNAME": None,
+                    "AGE": None,
+                    "GENDER": None,
+                    "NATIONALITY": None,
+                    "IDENTIFICATION": None,
+                    "SA_ID": None,
+                    "PASSPORT": None,
+                    "MOBILE_NUMBER": None,
+                    "LOCATION": None,
+                }
+       #context.user_data[level] = {}
+
     context.user_data[FIELDS][context.user_data[CURRENT_FIELD]] = update.message.text
+
+    # If there is data in the list, then update the dictionary
+    if context.user_data[level]:
+        # Update the corresponding field in the key
+        context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.text
 
     context.user_data[START_OVER] = True
 
