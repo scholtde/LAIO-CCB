@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-See Licence in project root
+See License in project root folder
 """
 
 import logging
@@ -10,6 +10,7 @@ import json
 
 from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove)
 from telegram import (InlineKeyboardMarkup, InlineKeyboardButton)
+from telegram import (KeyboardButton)
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                           ConversationHandler, CallbackQueryHandler)
 
@@ -19,6 +20,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
+# # Assign Unicode character for USER DATA keys - Difficult to debug, but faster
 # # Ensure that the below do not overlap
 # # State definitions for top level conversation
 # SELECTING_REASON, GENERAL, EMERGENCY = map(chr, range(3))
@@ -34,6 +36,7 @@ logger = logging.getLogger(__name__)
 # # Shortcut for ConversationHandler.END
 # END = ConversationHandler.END
 
+# Assign NAMED keys for USER_DATA keys - Easier to debug, but not great for processing load
 # Ensure that the below do not overlap
 # State definitions for top level conversation
 SELECTING_REASON = "SELECTING_REASON"
@@ -82,7 +85,7 @@ END = ConversationHandler.END
 # Top level conversation callbacks
 def start(update, context):
     """Select an action: Adding parent/child or show data."""
-    text = "Please confirm the main reason for making contact?"
+    text = "Please confirm the main reason for making contact? ↴"
     buttons = [[
         InlineKeyboardButton(text='GENERAL', callback_data=str(GENERAL)),
         InlineKeyboardButton(text='EMERGENCY', callback_data=str(EMERGENCY))
@@ -95,12 +98,14 @@ def start(update, context):
     if context.user_data.get(START_OVER):
         update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     else:
-        update.message.reply_text("Hi there. My name is XXX Bot.\n" +
+        update.message.reply_text(
+            "Hi there. My name is XXX Bot.\n" +
             "I'm your virtual assistant and work in the Chatbot Community Contact Centre.\n" +
             "I'll be assisting you with Identity & Personal Information " +
             "management and then hand you over to my human friend, " +
             "Agent001: XXX, who will assist you further.\n\n" +
-            "In order to assist you, please confirm your basic identity.")
+            "In order to assist you, please confirm your basic identity by navigating through the options below."
+            )
         update.message.reply_text(text=text, reply_markup=keyboard)
 
     context.user_data[START_OVER] = False
@@ -112,31 +117,6 @@ def end(update, context):
     text = "Thank you for chatting to us! We'll get back to you shortly. " + \
            "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on xxxx xxx xxxx"
     update.callback_query.edit_message_text(text=text)
-
-    return END
-
-
-def end_second_level(update, context):
-    """Return to top level conversation."""
-    context.user_data[START_OVER] = True
-    start(update, context)
-
-    return END
-
-
-def end_third_level(update, context):
-    """End gathering of fields and return to 2nd level conversation."""
-    level = context.user_data[CURRENT_LEVEL]
-    # if not context.user_data.get(level):
-    #     context.user_data[level] = []
-    #
-    # context.user_data[level].append(context.user_data[FIELDS])
-
-
-    # Print upper level menu
-    if level == SELF:
-        context.user_data[START_OVER] = True
-        general_reason(update, context)
 
     return END
 
@@ -157,15 +137,16 @@ def emergency_reason(update, context):
 
     return END
 
+
 # Second level callbacks
 def general_reason(update, context):
     """Choose to capture, show or go back"""
-    text = 'Choose below to capture or show your info.'
+    text = 'Choose below to capture or show your information ↴'
     buttons = [[
         InlineKeyboardButton(text='Start Capturing', callback_data=str(SELECTING_FIELD))
     ], [
-        InlineKeyboardButton(text='Show Your Info', callback_data=str(SHOWING)),
-        InlineKeyboardButton(text='<< Go Back', callback_data=str(END))
+        InlineKeyboardButton(text='<< Go Back', callback_data=str(END)),
+        InlineKeyboardButton(text='Show Your Info', callback_data=str(SHOWING))
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
@@ -186,23 +167,23 @@ def show_data(update, context):
         if not people:
             return '\nNo information yet.'
 
-        text = 'Captured Info\n'
-        text += '=============\n\n'
+        r_text = 'Captured Info\n'
+        r_text += '=============\n\n'
         if level == SELF:
             # for person in user_data[level]:
             #     text += '\nName: {0}, Age: {1}'.format(person.get(NAME, '-'), person.get(AGE, '-'))
-            text += 'Name: {0}\n'.format(user_data[level].get(NAME, '-'))
-            text += 'Surname: {0}\n'.format(user_data[level].get(SURNAME, '-'))
-            text += 'Age: {0}\n'.format(user_data[level].get(AGE, '-'))
-            text += 'Gender: {0}\n'.format(user_data[level].get(GENDER, '-'))
-            text += 'Nationality: {0}\n'.format(user_data[level].get(NATIONALITY, '-'))
-            text += 'Identification type: {0}\n'.format(user_data[level].get(IDENTIFICATION, '-'))
-            text += 'ID: {0}\n'.format(user_data[level].get(SA_ID, '-'))
-            text += 'Passport: {0}\n'.format(user_data[level].get(PASSPORT, '-'))
-            text += 'Mobile number: {0}\n'.format(user_data[level].get(MOBILE_NUMBER, '-'))
-            text += 'Location(gps): {0}\n'.format(user_data[level].get(LOCATION, '-'))
+            r_text += 'Name: {0}\n'.format(user_data[level].get(NAME, '-'))
+            r_text += 'Surname: {0}\n'.format(user_data[level].get(SURNAME, '-'))
+            r_text += 'Age: {0}\n'.format(user_data[level].get(AGE, '-'))
+            r_text += 'Gender: {0}\n'.format(user_data[level].get(GENDER, '-'))
+            r_text += 'Nationality: {0}\n'.format(user_data[level].get(NATIONALITY, '-'))
+            r_text += 'Identification type: {0}\n'.format(user_data[level].get(IDENTIFICATION, '-'))
+            r_text += 'ID: {0}\n'.format(user_data[level].get(SA_ID, '-'))
+            r_text += 'Passport: {0}\n'.format(user_data[level].get(PASSPORT, '-'))
+            r_text += 'Mobile number: {0}\n'.format(user_data[level].get(MOBILE_NUMBER, '-'))
+            r_text += 'Location(gps): {0}\n'.format(user_data[level].get(LOCATION, '-'))
 
-        return text
+        return r_text
 
     ud = context.user_data
     text = prettyprint(ud, SELF)
@@ -218,6 +199,14 @@ def show_data(update, context):
     print(context.user_data)
 
     return SHOWING
+
+
+def end_second_level(update, context):
+    """Return to top level conversation."""
+    context.user_data[START_OVER] = True
+    start(update, context)
+
+    return END
 
 
 # Third level callbacks
@@ -244,13 +233,13 @@ def select_field(update, context):
     if not context.user_data.get(START_OVER):
         context.user_data[FIELDS] = {}
         text = 'Please complete all the questions. Select the specific question to update it. ' + \
-               'If you made a mistake, please select the question again to correct.'
+               'If you made a mistake, please select the question again to correct ↴'
         update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     # But after we do that, we need to send a new message
     else:
         text = 'Got it!'
         update.message.reply_text(text=text, reply_markup=ReplyKeyboardRemove())
-        text = 'Please select a question to update.'
+        text = 'Please select a question to update ↴'
         update.message.reply_text(text=text, reply_markup=keyboard)
 
     context.user_data[START_OVER] = False
@@ -263,12 +252,12 @@ def ask_for_input(update, context):
     context.user_data[CURRENT_FIELD] = update.callback_query.data
 
     if update.callback_query.data == GENDER:
-        text = 'Okay, please write and send your answer'
+        text = 'Okay, please write and send your answer.'
         update.callback_query.edit_message_text(text=text, reply_markup=None)
 
-        reply_keyboard = [['male', 'female'],
-                          ['boy', 'girl'],
-                          ['other', 'prefer not to say']]
+        reply_keyboard = [['Male', 'Female'],
+                          ['Boy', 'Girl'],
+                          ['Other', 'I prefer not to say']]
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
         text = 'You can choose your gender from the provided buttons'
         context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
@@ -278,10 +267,30 @@ def ask_for_input(update, context):
         update.callback_query.edit_message_text(text=text, reply_markup=None)
         reply_keyboard = []
         for nation in nationality_dict:
+            if nation["name"] == "South Africa":
+                reply_keyboard.insert(0, [nation["name"]])
             reply_keyboard.append([nation["name"]])
 
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
         text = 'You can choose your nationality from the provided buttons'
+        context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
+
+    elif update.callback_query.data == MOBILE_NUMBER:
+        text = 'Okay, please write and send your answer.'
+        update.callback_query.edit_message_text(text=text, reply_markup=None)
+
+        reply_keyboard = [[KeyboardButton(text="Send my mobile number", request_contact=True)]]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+        text = 'Or you can choose to send your number from the provided button'
+        context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
+
+    elif update.callback_query.data == LOCATION:
+        text = 'Okay, please send your location'
+        update.callback_query.edit_message_text(text=text, reply_markup=None)
+
+        reply_keyboard = [[KeyboardButton(text="Send my current location", request_location=True)]]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+        text = 'Or you can choose to send your current location from the provided button'
         context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
 
     else:
@@ -298,36 +307,32 @@ def save_input(update, context):
     level = context.user_data[CURRENT_LEVEL]
     # If there is no key, then create one, this should only happen once
     if not context.user_data.get(level):
-       # context.user_data[level] = {
-       #              "NAME": None,
-       #              "SURNAME": None,
-       #              "AGE": None,
-       #              "GENDER": None,
-       #              "NATIONALITY": None,
-       #              "IDENTIFICATION": None,
-       #              "SA_ID": None,
-       #              "PASSPORT": None,
-       #              "MOBILE_NUMBER": None,
-       #              "LOCATION": None,
-       #          }
-       context.user_data[level] = {}
-
+        context.user_data[level] = {}
 
     # Update the corresponding field in the key
-    context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.text
-    #context.user_data[FIELDS][context.user_data[CURRENT_FIELD]] = update.message.text
+    if context.user_data[CURRENT_FIELD] == MOBILE_NUMBER:
+        context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.contact["phone_number"]
+    elif context.user_data[CURRENT_FIELD] == LOCATION:
+        context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.location
+    else:
+        context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.text
+
+    # context.user_data[FIELDS][context.user_data[CURRENT_FIELD]] = update.message.text
 
     context.user_data[START_OVER] = True
 
     return select_field(update, context)
 
 
-def stop_nested(update, context):
-    """Completely end conversation from within nested conversation."""
-    update.message.reply_text("Thank you for chatting to us! We'll get back to you shortly. " +
-        "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on xxxx xxx xxxx")
+def end_third_level(update, context):
+    """End gathering of fields and return to 2nd level conversation."""
+    level = context.user_data[CURRENT_LEVEL]
+    # Print upper level menu
+    if level == SELF:
+        context.user_data[START_OVER] = True
+        general_reason(update, context)
 
-    return STOPPING
+    return END
 
 
 # Error handler
@@ -345,17 +350,19 @@ def main():
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
+    # Setup nested conversation handlers starting at the deepest level
     # Set up third level ConversationHandler (collecting FIELDS)
     capture_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(select_field, pattern='^' + str(SELECTING_FIELD) + '$')],
         states={
             UPDATING_INFO: [CallbackQueryHandler(ask_for_input, pattern='^(?!' + str(END) + ').*$'), ],
-            TYPING: [MessageHandler(Filters.text, save_input), ],
+            TYPING: [MessageHandler(Filters.text, save_input),
+                     MessageHandler(Filters.contact, save_input),
+                     MessageHandler(Filters.location, save_input), ],
                      # CallbackQueryHandler(save_input, pattern='^(?!' + str(PREFER_NO_GEN) + ').*$'), ],
         },
         fallbacks=[
             CallbackQueryHandler(end_third_level, pattern='^' + str(END) + '$'),
-            CommandHandler('stop', stop_nested)
         ],
         map_to_parent={
             # Return to 2nd level menu
@@ -375,15 +382,11 @@ def main():
                                CallbackQueryHandler(end_second_level, pattern='^' + str(END) + '$')],
         },
         fallbacks=[
-            CommandHandler('stop', stop_nested)
+            CommandHandler('stop', stop)
         ],
         map_to_parent={
             # Return to top level menu
             END: SELECTING_REASON,
-            # Return to second level menu
-            #END: CAPTURING,
-            # End conversation alltogether
-            STOPPING: STOPPING,
         }
     )
 
@@ -399,11 +402,8 @@ def main():
         },
         fallbacks=[CommandHandler('stop', stop)],
     )
-    # Because the states of the third level conversation map to the ones of the
-    # second level conversation, we need to be a bit hacky about that:
-    #action_conv.states[UPDATING_INFO] = action_conv.states[SELECTING_ACTION]
-    #action_conv.states[STOPPING] = action_conv.entry_points
 
+    # Add Handler to the dispatcher
     dp.add_handler(conv_handler)
 
     # log all errors
