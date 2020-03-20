@@ -46,8 +46,10 @@ EMERGENCY = "EMERGENCY"
 SELECTING_ACTION = "SELECTING_ACTION"
 SELECTING_FIELD = "SELECTING_FIELD"
 START_CAPTURE = "START_CAPTURE"
+SUBMIT = "SUBMIT"
 # State definitions for descriptions conversation
 TYPING = "TYPING"
+CHOOSING = "CHOOSING"
 # Meta states
 STOPPING = "STOPPING"
 SHOWING = "SHOWING"
@@ -77,6 +79,13 @@ PREFER_NO_GEN = "PREFER_NO_GEN"
 
 f = open("../config/country.json", "r")
 nationality_dict = json.loads(f.read())
+f.close()
+f = open("../config/gender.json", "r")
+gender_dict = json.loads(f.read())
+f.close()
+f = open("../config/identification_type.json", "r")
+id_type_dict = json.loads(f.read())
+f.close()
 
 # Shortcut for ConversationHandler.END
 END = ConversationHandler.END
@@ -130,6 +139,15 @@ def stop(update, context):
     return END
 
 
+def stop_nested(update, context):
+    """Completely end conversation from within nested conversation."""
+    text = "Thank you for chatting to us! We'll get back to you shortly. " + \
+           "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on xxxx xxx xxxx"
+    context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=None)
+
+    return STOPPING
+
+
 def emergency_reason(update, context):
     """EMERGENCY was chosen. Go to EMERGENCY Bot."""
     text = 'Okay, for an EMERGENCY click on the below link:\n -> @LAIOCommunityCBCEmergencyBot'
@@ -143,10 +161,12 @@ def general_reason(update, context):
     """Choose to capture, show or go back"""
     text = 'Choose below to capture or show your information ↴'
     buttons = [[
-        InlineKeyboardButton(text='Start Capturing', callback_data=str(SELECTING_FIELD))
+        InlineKeyboardButton(text='Capture my Info', callback_data=str(SELECTING_FIELD))
     ], [
         InlineKeyboardButton(text='<< Go Back', callback_data=str(END)),
-        InlineKeyboardButton(text='Show Your Info', callback_data=str(SHOWING))
+        InlineKeyboardButton(text='Show my Info', callback_data=str(SHOWING))
+    ], [
+        InlineKeyboardButton(text='✅ Submit my Info', callback_data=str(SUBMIT))
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
@@ -201,6 +221,27 @@ def show_data(update, context):
     return SHOWING
 
 
+def submit_info(update, context):
+    """Submit gathered information."""
+    # Nested function to renturn a pretty string of text containing all information
+    def prettyprint(user_data, level):
+        people = user_data.get(level)
+        if not people:
+            return '\nNo information yet. Exiting..'
+
+        r_text = 'Submitting your Info. Exiting..\n'
+
+        return r_text
+
+    ud = context.user_data
+    text = prettyprint(ud, SELF)
+
+    update.callback_query.edit_message_text(text=text, reply_markup=None)
+    ud[START_OVER] = False
+
+    return stop_nested(update, context)
+
+
 def end_second_level(update, context):
     """Return to top level conversation."""
     context.user_data[START_OVER] = True
@@ -237,7 +278,7 @@ def select_field(update, context):
         update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     # But after we do that, we need to send a new message
     else:
-        text = 'Got it!'
+        text = "👍Thank you."
         update.message.reply_text(text=text, reply_markup=ReplyKeyboardRemove())
         text = 'Please select a question to update ↴'
         update.message.reply_text(text=text, reply_markup=keyboard)
@@ -254,10 +295,7 @@ def ask_for_input(update, context):
     if update.callback_query.data == GENDER:
         text = 'Okay, please write and send your answer.'
         update.callback_query.edit_message_text(text=text, reply_markup=None)
-
-        reply_keyboard = [['Male', 'Female'],
-                          ['Boy', 'Girl'],
-                          ['Other', 'I prefer not to say']]
+        reply_keyboard = gender_dict["gender"]
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
         text = 'You can choose your gender from the provided buttons'
         context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
@@ -274,6 +312,17 @@ def ask_for_input(update, context):
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
         text = 'You can choose your nationality from the provided buttons'
         context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
+
+    elif update.callback_query.data == IDENTIFICATION:
+        text = 'Okay, please write and send your answer'
+        update.callback_query.edit_message_text(text=text, reply_markup=None)
+        reply_keyboard = id_type_dict["identification_type"]
+
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+        text = 'You can choose your identification type from the provided buttons'
+        context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
+
+        return CHOOSING
 
     elif update.callback_query.data == MOBILE_NUMBER:
         text = 'Okay, please write and send your answer.'
@@ -294,10 +343,37 @@ def ask_for_input(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
 
     else:
-        # text = 'Okay great.'
-        # context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=ReplyKeyboardRemove())
         text = 'Okay, please write and send your answer'
         update.callback_query.edit_message_text(text=text, reply_markup=None)
+
+    return TYPING
+
+
+def process_choice(update, context):
+    """Save input for FIELD and return to field selection."""
+    level = context.user_data[CURRENT_LEVEL]
+    # If there is no key, then create one, this should only happen once
+    if not context.user_data.get(level):
+        context.user_data[level] = {}
+
+    # Update the corresponding field in the key
+    if context.user_data[CURRENT_FIELD] == IDENTIFICATION:
+        if update.message.text == id_type_dict["identification_type"][0][0]:
+            context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.text
+            context.user_data[CURRENT_FIELD] = SA_ID
+            text = 'Okay, please write and send your SA ID number'
+            context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=ReplyKeyboardRemove())
+        elif update.message.text == id_type_dict["identification_type"][0][1]:
+            context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.text
+            context.user_data[CURRENT_FIELD] = PASSPORT
+            text = 'Okay, please write and send your Passport number'
+            context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=ReplyKeyboardRemove())
+        else:
+            text = 'Sorry, I cannot process that information.'
+            context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=ReplyKeyboardRemove())
+            context.user_data[START_OVER] = True
+
+            return select_field(update, context)
 
     return TYPING
 
@@ -359,7 +435,7 @@ def main():
             TYPING: [MessageHandler(Filters.text, save_input),
                      MessageHandler(Filters.contact, save_input),
                      MessageHandler(Filters.location, save_input), ],
-                     # CallbackQueryHandler(save_input, pattern='^(?!' + str(PREFER_NO_GEN) + ').*$'), ],
+            CHOOSING: [MessageHandler(Filters.text, process_choice), ],
         },
         fallbacks=[
             CallbackQueryHandler(end_third_level, pattern='^' + str(END) + '$'),
@@ -379,12 +455,14 @@ def main():
             SHOWING: [CallbackQueryHandler(general_reason, pattern='^' + str(END) + '$')],
             SELECTING_ACTION: [capture_conv,
                                CallbackQueryHandler(show_data, pattern='^' + str(SHOWING) + '$'),
-                               CallbackQueryHandler(end_second_level, pattern='^' + str(END) + '$')],
+                               CallbackQueryHandler(end_second_level, pattern='^' + str(END) + '$'),
+                               CallbackQueryHandler(submit_info, pattern='^' + str(SUBMIT) + '$')],
         },
         fallbacks=[
             CommandHandler('stop', stop)
         ],
         map_to_parent={
+            STOPPING: END,
             # Return to top level menu
             END: SELECTING_REASON,
         }
@@ -403,6 +481,7 @@ def main():
         fallbacks=[CommandHandler('stop', stop)],
     )
 
+    conv_handler.states[STOPPING] = conv_handler.entry_points
     # Add Handler to the dispatcher
     dp.add_handler(conv_handler)
 
