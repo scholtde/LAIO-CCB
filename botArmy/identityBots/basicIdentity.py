@@ -190,8 +190,6 @@ def show_data(update, context):
         r_text = 'Captured Info\n'
         r_text += '=============\n\n'
         if level == SELF:
-            # for person in user_data[level]:
-            #     text += '\nName: {0}, Age: {1}'.format(person.get(NAME, '-'), person.get(AGE, '-'))
             r_text += 'Name: {0}\n'.format(user_data[level].get(NAME, '-'))
             r_text += 'Surname: {0}\n'.format(user_data[level].get(SURNAME, '-'))
             r_text += 'Age: {0}\n'.format(user_data[level].get(AGE, '-'))
@@ -221,6 +219,42 @@ def show_data(update, context):
     return SHOWING
 
 
+def send_mail(user_data, level, data_submit):
+    import smtplib
+    import ssl
+
+    port = 465  # For SSL
+    password = "laio#com"
+    smtp_server = "smtp.yandex.com"
+    sender_email = "laiocommunity@yandex.com"  # Enter your address
+    receiver_email = "laiocommunity@yandex.com"  # Enter receiver address
+
+    # Create a secure SSL context
+    context = ssl.create_default_context()
+
+    message = """\
+            Subject: LAIO Community Bot - Basic Identity
+
+            Capture Data:"""
+
+    message += str(data_submit)
+
+    message += '\n\nName: {0}\n'.format(user_data[level].get(NAME, '-'))
+    message += 'Surname: {0}\n'.format(user_data[level].get(SURNAME, '-'))
+    message += 'Age: {0}\n'.format(user_data[level].get(AGE, '-'))
+    message += 'Gender: {0}\n'.format(user_data[level].get(GENDER, '-'))
+    message += 'Nationality: {0}\n'.format(user_data[level].get(NATIONALITY, '-'))
+    message += 'Identification type: {0}\n'.format(user_data[level].get(IDENTIFICATION, '-'))
+    message += 'ID: {0}\n'.format(user_data[level].get(SA_ID, '-'))
+    message += 'Passport: {0}\n'.format(user_data[level].get(PASSPORT, '-'))
+    message += 'Mobile number: {0}\n'.format(user_data[level].get(MOBILE_NUMBER, '-'))
+    message += 'Location(gps): {0}\n'.format(user_data[level].get(LOCATION, '-'))
+
+    with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
+        server.login(sender_email, password)
+        server.sendmail(sender_email, receiver_email, message)
+
+
 def submit_info(update, context):
     """Submit gathered information."""
     # Nested function to renturn a pretty string of text containing all information
@@ -230,6 +264,28 @@ def submit_info(update, context):
             return '\nNo information yet. Exiting..'
 
         r_text = 'Submitting your Info. Exiting..\n'
+
+        data_submit = {}
+        if level == SELF:
+            # for person in user_data[level]:
+            #     text += '\nName: {0}, Age: {1}'.format(person.get(NAME, '-'), person.get(AGE, '-'))
+            data_submit["name"] = '{0}'.format(user_data[level].get(NAME, '-'))
+            data_submit["surname"] = '{0}'.format(user_data[level].get(SURNAME, '-'))
+            data_submit["age"] = '{0}'.format(user_data[level].get(AGE, '-'))
+            data_submit["gender"] = '{0}'.format(user_data[level].get(GENDER, '-'))
+            data_submit["nationality"] = '{0}'.format(user_data[level].get(NATIONALITY, '-'))
+            data_submit["identification_type"] = '{0}'.format(user_data[level].get(IDENTIFICATION, '-'))
+            data_submit["sa_id_number"] = '{0}'.format(user_data[level].get(SA_ID, '-'))
+            data_submit["passport"] = '{0}'.format(user_data[level].get(PASSPORT, '-'))
+            data_submit["mobile_number"] = '{0}'.format(user_data[level].get(MOBILE_NUMBER, '-'))
+            if user_data[level].get(LOCATION) and not None:
+                gps_c = user_data[level].get(LOCATION)
+                data_submit["location"] = {"latitude": gps_c["latitude"],
+                                           "longitude": gps_c["longitude"]}
+            else:
+                data_submit["location"] = {}
+
+        #send_mail(user_data, level, data_submit)
 
         return r_text
 
@@ -257,14 +313,14 @@ def select_field(update, context):
         InlineKeyboardButton(text='Q1: Name?', callback_data=str(NAME)),
         InlineKeyboardButton(text='Q2: Surname?', callback_data=str(SURNAME)),
         ], [
-        InlineKeyboardButton(text='Q3: Nationality?', callback_data=str(NATIONALITY)),
-        InlineKeyboardButton(text='Q4: Identification?', callback_data=str(IDENTIFICATION)),
+        InlineKeyboardButton(text='Q7: Age?', callback_data=str(AGE)),
+        InlineKeyboardButton(text='Q8: Gender?', callback_data=str(GENDER)),
         ], [
         InlineKeyboardButton(text='Q5: Mobile Number?', callback_data=str(MOBILE_NUMBER)),
         InlineKeyboardButton(text='Q6: Location?', callback_data=str(LOCATION)),
         ], [
-        InlineKeyboardButton(text='Q7: Age?', callback_data=str(AGE)),
-        InlineKeyboardButton(text='Q8: Gender?', callback_data=str(GENDER)),
+        InlineKeyboardButton(text='Q3: Nationality?', callback_data=str(NATIONALITY)),
+        InlineKeyboardButton(text='Q4: Identification?', callback_data=str(IDENTIFICATION)),
         ], [
         InlineKeyboardButton(text='Done', callback_data=str(END)),
     ]]
@@ -339,7 +395,8 @@ def ask_for_input(update, context):
 
         reply_keyboard = [[KeyboardButton(text="Send my current location", request_location=True)]]
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
-        text = 'Or you can choose to send your current location from the provided button'
+        text = 'Or you can choose to send your current location from the provided button.\n' + \
+               'Please use a GPS capable mobile phone to capture the location.'
         context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
 
     else:
