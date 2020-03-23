@@ -312,28 +312,50 @@ def end_second_level(update, context):
 # Third level callbacks
 def select_field(update, context):
     """Select a FIELD to update for the person."""
+    def check_done(user_data, key):
+        item = ""
+        if key in user_data:
+            item = " ✅"
+
+        return item
+
     level = context.user_data[CURRENT_LEVEL]
+    # If there is no key, then create one, this should only happen once
+    if not context.user_data.get(level):
+        context.user_data[level] = {}
+
+    ud = context.user_data[level]
+    print(context.user_data)
 
     buttons = [[
-        InlineKeyboardButton(text=bot_menus["level-3"]["Q1"], callback_data=str(NAME)),
-        InlineKeyboardButton(text=bot_menus["level-3"]["Q2"], callback_data=str(SURNAME)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q1"] + check_done(ud, NAME),
+                             callback_data=str(NAME)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q2"] + check_done(ud, SURNAME),
+                             callback_data=str(SURNAME)),
         ], [
-        InlineKeyboardButton(text=bot_menus["level-3"]["Q3"], callback_data=str(AGE)),
-        InlineKeyboardButton(text=bot_menus["level-3"]["Q4"], callback_data=str(GENDER)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q3"] + check_done(ud, AGE),
+                             callback_data=str(AGE)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q4"] + check_done(ud, GENDER),
+                             callback_data=str(GENDER)),
         ], [
-        InlineKeyboardButton(text=bot_menus["level-3"]["Q5"], callback_data=str(MOBILE_NUMBER)),
-        InlineKeyboardButton(text=bot_menus["level-3"]["Q6"], callback_data=str(LOCATION)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q5"] + check_done(ud, MOBILE_NUMBER),
+                             callback_data=str(MOBILE_NUMBER)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q6"] + check_done(ud, LOCATION),
+                             callback_data=str(LOCATION)),
         ], [
-        InlineKeyboardButton(text=bot_menus["level-3"]["Q7"], callback_data=str(NATIONALITY)),
-        InlineKeyboardButton(text=bot_menus["level-3"]["Q8"], callback_data=str(IDENTIFICATION)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q7"] + check_done(ud, NATIONALITY),
+                             callback_data=str(NATIONALITY)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q8"] + check_done(ud, IDENTIFICATION),
+                             callback_data=str(IDENTIFICATION)),
         ], [
-        InlineKeyboardButton(text=bot_menus["level-3"]["Q9"], callback_data=str(END)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q9"],
+                             callback_data=str(END)),
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
 
     # If we collect features for a new person, clear the cache and save the gender
     if not context.user_data.get(START_OVER):
-        context.user_data[FIELDS] = {}
+        #context.user_data[FIELDS] = {}
         text = 'Please complete all the questions. Select the specific question to update it. ' + \
                'If you made a mistake, please select the question again to correct ↴'
         update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
@@ -483,7 +505,7 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    updater = Updater("1141194468:AAH7BF-EzQQpmzh7fo45uG1mU3FSxHBE6KI", use_context=True)
+    updater = Updater(bot_menus["token"], use_context=True)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
