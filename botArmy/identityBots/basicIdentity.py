@@ -67,16 +67,19 @@ SA_ID = "SA_ID"
 PASSPORT = "PASSPORT"
 MOBILE_NUMBER = "MOBILE_NUMBER"
 LOCATION = "LOCATION"
-GO_BACK = "GO_BACK"
+# GO_BACK = "GO_BACK"
 UPDATING_INFO = "UPDATING_INFO"
 CURRENT_LEVEL = "CURRENT_LEVEL"
 CURRENT_FIELD = "CURRENT_FIELD"
 
-MALE = "MALE"
-FEMALE = "FEMALE"
-OTHER_GEN = "OTHER_GEN"
-PREFER_NO_GEN = "PREFER_NO_GEN"
+# MALE = "MALE"
+# FEMALE = "FEMALE"
+# OTHER_GEN = "OTHER_GEN"
+# PREFER_NO_GEN = "PREFER_NO_GEN"
 
+f = open("../config/bots/basicIdentity.json", "r")
+bot_menus = json.loads(f.read())
+f.close()
 f = open("../config/country.json", "r")
 nationality_dict = json.loads(f.read())
 f.close()
@@ -96,10 +99,10 @@ def start(update, context):
     """Select an action: Adding parent/child or show data."""
     text = "Please confirm the main reason for making contact? ↴"
     buttons = [[
-        InlineKeyboardButton(text='GENERAL', callback_data=str(GENERAL)),
-        InlineKeyboardButton(text='EMERGENCY', callback_data=str(EMERGENCY))
+        InlineKeyboardButton(text=bot_menus["level-1"]["Q1"], callback_data=str(GENERAL)),
+        InlineKeyboardButton(text=bot_menus["level-1"]["Q2"], callback_data=str(EMERGENCY))
     ], [
-        InlineKeyboardButton(text='Exit', callback_data=str(END))
+        InlineKeyboardButton(text=bot_menus["level-1"]["Q3"], callback_data=str(END))
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
 
@@ -161,12 +164,12 @@ def general_reason(update, context):
     """Choose to capture, show or go back"""
     text = 'Choose below to capture or show your information ↴'
     buttons = [[
-        InlineKeyboardButton(text='Capture my Info', callback_data=str(SELECTING_FIELD))
+        InlineKeyboardButton(text=bot_menus["level-2"]["Q1"], callback_data=str(SELECTING_FIELD))
     ], [
-        InlineKeyboardButton(text='<< Go Back', callback_data=str(END)),
-        InlineKeyboardButton(text='Show my Info', callback_data=str(SHOWING))
+        InlineKeyboardButton(text=bot_menus["level-2"]["Q2"], callback_data=str(END)),
+        InlineKeyboardButton(text=bot_menus["level-2"]["Q3"], callback_data=str(SHOWING))
     ], [
-        InlineKeyboardButton(text='✅ Submit my Info', callback_data=str(SUBMIT))
+        InlineKeyboardButton(text=bot_menus["level-2"]["Q4"], callback_data=str(SUBMIT))
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
@@ -309,20 +312,22 @@ def end_second_level(update, context):
 # Third level callbacks
 def select_field(update, context):
     """Select a FIELD to update for the person."""
+    level = context.user_data[CURRENT_LEVEL]
+
     buttons = [[
-        InlineKeyboardButton(text='Q1: Name?', callback_data=str(NAME)),
-        InlineKeyboardButton(text='Q2: Surname?', callback_data=str(SURNAME)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q1"], callback_data=str(NAME)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q2"], callback_data=str(SURNAME)),
         ], [
-        InlineKeyboardButton(text='Q7: Age?', callback_data=str(AGE)),
-        InlineKeyboardButton(text='Q8: Gender?', callback_data=str(GENDER)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q3"], callback_data=str(AGE)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q4"], callback_data=str(GENDER)),
         ], [
-        InlineKeyboardButton(text='Q5: Mobile Number?', callback_data=str(MOBILE_NUMBER)),
-        InlineKeyboardButton(text='Q6: Location?', callback_data=str(LOCATION)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q5"], callback_data=str(MOBILE_NUMBER)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q6"], callback_data=str(LOCATION)),
         ], [
-        InlineKeyboardButton(text='Q3: Nationality?', callback_data=str(NATIONALITY)),
-        InlineKeyboardButton(text='Q4: Identification?', callback_data=str(IDENTIFICATION)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q7"], callback_data=str(NATIONALITY)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q8"], callback_data=str(IDENTIFICATION)),
         ], [
-        InlineKeyboardButton(text='Done', callback_data=str(END)),
+        InlineKeyboardButton(text=bot_menus["level-3"]["Q9"], callback_data=str(END)),
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
 

@@ -1,0 +1,24 @@
+{
+  "level-1": {
+    "Q1": "GENERAL",
+    "Q2": "EMERGENCY",
+    "Q3": "Exit"
+  },
+  "level-2": {
+    "Q1": "Capture my Info",
+    "Q2": "<< Go Back",
+    "Q3": "Show my Info",
+    "Q4": "✅ Submit my Info"
+  },
+  "level-3": {
+    "Q1": "Q1: Name?",
+    "Q2": "Q2: Surname?",
+    "Q3": "Q3: Age?",
+    "Q4": "Q4: Gender?",
+    "Q5": "Q5: Mobile Number?",
+    "Q6": "Q6: Location?",
+    "Q7": "Q7: Nationality?",
+    "Q8": "Q8: Identification?",
+    "Q9": "Done"
+  }
+}
