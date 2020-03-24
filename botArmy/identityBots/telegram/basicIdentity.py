@@ -77,16 +77,16 @@ CURRENT_FIELD = "CURRENT_FIELD"
 # OTHER_GEN = "OTHER_GEN"
 # PREFER_NO_GEN = "PREFER_NO_GEN"
 
-f = open("../config/bots/basicIdentity.json", "r")
+f = open("../../config/bots/basicIdentity.json", "r")
 bot_menus = json.loads(f.read())
 f.close()
-f = open("../config/country.json", "r")
+f = open("../../config/country.json", "r")
 nationality_dict = json.loads(f.read())
 f.close()
-f = open("../config/gender.json", "r")
+f = open("../../config/gender.json", "r")
 gender_dict = json.loads(f.read())
 f.close()
-f = open("../config/identification_type.json", "r")
+f = open("../../config/identification_type.json", "r")
 id_type_dict = json.loads(f.read())
 f.close()
 
