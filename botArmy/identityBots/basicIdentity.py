@@ -269,7 +269,7 @@ def submit_info(update, context):
         # Check if all required fields are captured
         else:
             check_list = [NAME, SURNAME, AGE, GENDER, NATIONALITY, IDENTIFICATION,
-                          SA_ID, PASSPORT, MOBILE_NUMBER, LOCATION]
+                          MOBILE_NUMBER, LOCATION]
             for key in check_list:
                 if key not in person:
                     return 'CHECK_FAILED'
@@ -278,20 +278,35 @@ def submit_info(update, context):
                         val = user_data[level].get(AGE)
                         if 0 < int(val) < 120:
                             pass
+                        else:
+                            return 'CHECK_FAILED'
                     except Exception as e:
                         return 'CHECK_FAILED'
                 if key == GENDER:
                     try:
                         val = user_data[level].get(GENDER)
-                        if val in gender_dict["gender_list"]:
-                            pass
+                        if val not in gender_dict["gender_list"]:
+                            return 'CHECK_FAILED'
+                    except Exception as e:
+                        return 'CHECK_FAILED'
+                if key == NATIONALITY:
+                    try:
+                        val = user_data[level].get(NATIONALITY)
+                        nations = []
+                        for nation in nationality_dict:
+                            nations.append(nation["name"])
+                        if val not in nations:
+                            return 'CHECK_FAILED'
                     except Exception as e:
                         return 'CHECK_FAILED'
                 if key == IDENTIFICATION:
                     try:
                         val = user_data[level].get(IDENTIFICATION)
-                        if val in id_type_dict[0]:
-                            pass
+                        if val in id_type_dict["identification_type"][0]:
+                            if user_data[level].get(val) and int(user_data[level].get(val)) > 0:
+                                pass
+                            else:
+                                return 'CHECK_FAILED'
                         else:
                             return 'CHECK_FAILED'
                     except Exception as e:
@@ -299,13 +314,20 @@ def submit_info(update, context):
                 if key == MOBILE_NUMBER:
                     try:
                         val = user_data[level].get(MOBILE_NUMBER)
-                        if int(val) > 0:
-                            pass
+                        if len(val) > 0:
+                            if "+" in val:
+                                val = val.split("+")
+                                if int(val[1]) > 0:
+                                    pass
+                            elif int(val) > 0:
+                                pass
+                        else:
+                            return 'CHECK_FAILED'
                     except Exception as e:
                         return 'CHECK_FAILED'
                 if key == LOCATION:
                     val = user_data[level].get(LOCATION)
-                    if val is None:
+                    if val is None and val == "location not valid":
                         return 'CHECK_FAILED'
 
 
@@ -531,9 +553,15 @@ def save_input(update, context):
 
     # Update the corresponding field in the key
     if context.user_data[CURRENT_FIELD] == MOBILE_NUMBER:
-        context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.contact["phone_number"]
+        if update.message.contact is not None:
+            context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.contact["phone_number"]
+        if update.message.text is not None:
+            context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.text
     elif context.user_data[CURRENT_FIELD] == LOCATION:
-        context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.location
+        if update.message.location is not None:
+            context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.location
+        if update.message.text is not None:
+            context.user_data[level][context.user_data[CURRENT_FIELD]] = "location not valid"
     else:
         context.user_data[level][context.user_data[CURRENT_FIELD]] = update.message.text
 
