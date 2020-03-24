@@ -77,7 +77,7 @@ CURRENT_FIELD = "CURRENT_FIELD"
 # OTHER_GEN = "OTHER_GEN"
 # PREFER_NO_GEN = "PREFER_NO_GEN"
 
-f = open("../../config/bots/basicIdentity.json", "r")
+f = open("basicIdentity.json", "r")
 bot_menus = json.loads(f.read())
 f.close()
 f = open("../../config/country.json", "r")
@@ -111,11 +111,11 @@ def start(update, context):
         update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     else:
         update.message.reply_text(
-            "Hi there. My name is XXX Bot.\n" +
+            "Hi there. My name is " + bot_menus["bot_name"] + " Bot.\n" +
             "I'm your virtual assistant and work in the Chatbot Community Contact Centre.\n" +
             "I'll be assisting you with Identity & Personal Information " +
-            "management and then hand you over to my human friend, " +
-            "Agent001: XXX, who will assist you further.\n\n" +
+            "management and then hand you over to my human friend " +
+            "who will assist you further.\n\n" +
             "In order to assist you, please confirm your basic identity by navigating through the options below."
             )
         update.message.reply_text(text=text, reply_markup=keyboard)
@@ -127,7 +127,7 @@ def start(update, context):
 def end(update, context):
     """End conversation from InlineKeyboardButton."""
     text = "Thank you for chatting to us! We'll get back to you shortly. " + \
-           "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on xxxx xxx xxxx"
+           "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on 0800 029 999"
     update.callback_query.edit_message_text(text=text)
 
     return END
@@ -136,7 +136,7 @@ def end(update, context):
 def stop(update, context):
     """End Conversation by command."""
     text = "Thank you for chatting to us! We'll get back to you shortly. " + \
-           "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on xxxx xxx xxxx"
+           "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on 0800 029 999"
     update.message.reply_text(text)
 
     return END
@@ -145,7 +145,7 @@ def stop(update, context):
 def stop_nested(update, context):
     """Completely end conversation from within nested conversation."""
     text = "Thank you for chatting to us! We'll get back to you shortly. " + \
-           "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on xxxx xxx xxxx"
+           "\nIn the event of an emergency, please contact the NDOH National Corona Hotline on 0800 029 999"
     context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=None)
 
     return STOPPING
