@@ -1,3 +1,4 @@
 {
-  "gender": [["Male", "Female"], ["Boy", "Girl"], ["Other", "I prefer not to say"]]
+  "gender": [["Male", "Female"], ["Boy", "Girl"], ["Other", "I prefer not to say"]],
+  "gender_list": ["Male", "Female", "Boy", "Girl", "Other", "I prefer not to say"]
 }

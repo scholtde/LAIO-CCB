@@ -261,44 +261,102 @@ def send_mail(user_data, level, data_submit):
 def submit_info(update, context):
     """Submit gathered information."""
     # Nested function to renturn a pretty string of text containing all information
-    def prettyprint(user_data, level):
-        people = user_data.get(level)
-        if not people:
-            return '\nNo information yet. Exiting..'
+    def check_data(user_data, level):
+        person = user_data.get(level)
+        # Check if there are any info captured
+        if not person:
+            return 'CHECK_FAILED'
+        # Check if all required fields are captured
+        else:
+            check_list = [NAME, SURNAME, AGE, GENDER, NATIONALITY, IDENTIFICATION,
+                          SA_ID, PASSPORT, MOBILE_NUMBER, LOCATION]
+            for key in check_list:
+                if key not in person:
+                    return 'CHECK_FAILED'
+                if key == AGE:
+                    try:
+                        val = user_data[level].get(AGE)
+                        if 0 < int(val) < 120:
+                            pass
+                    except Exception as e:
+                        return 'CHECK_FAILED'
+                if key == GENDER:
+                    try:
+                        val = user_data[level].get(GENDER)
+                        if val in gender_dict["gender_list"]:
+                            pass
+                    except Exception as e:
+                        return 'CHECK_FAILED'
+                if key == IDENTIFICATION:
+                    try:
+                        val = user_data[level].get(IDENTIFICATION)
+                        if val in id_type_dict[0]:
+                            pass
+                        else:
+                            return 'CHECK_FAILED'
+                    except Exception as e:
+                        return 'CHECK_FAILED'
+                if key == MOBILE_NUMBER:
+                    try:
+                        val = user_data[level].get(MOBILE_NUMBER)
+                        if int(val) > 0:
+                            pass
+                    except Exception as e:
+                        return 'CHECK_FAILED'
+                if key == LOCATION:
+                    val = user_data[level].get(LOCATION)
+                    if val is None:
+                        return 'CHECK_FAILED'
 
-        r_text = 'Submitting your Info. Exiting..\n'
 
-        data_submit = {}
-        if level == SELF:
-            # for person in user_data[level]:
-            #     text += '\nName: {0}, Age: {1}'.format(person.get(NAME, '-'), person.get(AGE, '-'))
-            data_submit["name"] = '{0}'.format(user_data[level].get(NAME, '-'))
-            data_submit["surname"] = '{0}'.format(user_data[level].get(SURNAME, '-'))
-            data_submit["age"] = '{0}'.format(user_data[level].get(AGE, '-'))
-            data_submit["gender"] = '{0}'.format(user_data[level].get(GENDER, '-'))
-            data_submit["nationality"] = '{0}'.format(user_data[level].get(NATIONALITY, '-'))
-            data_submit["identification_type"] = '{0}'.format(user_data[level].get(IDENTIFICATION, '-'))
-            data_submit["sa_id_number"] = '{0}'.format(user_data[level].get(SA_ID, '-'))
-            data_submit["passport"] = '{0}'.format(user_data[level].get(PASSPORT, '-'))
-            data_submit["mobile_number"] = '{0}'.format(user_data[level].get(MOBILE_NUMBER, '-'))
-            if user_data[level].get(LOCATION) and not None:
-                gps_c = user_data[level].get(LOCATION)
-                data_submit["location"] = {"latitude": gps_c["latitude"],
-                                           "longitude": gps_c["longitude"]}
-            else:
-                data_submit["location"] = {}
+            r_text = 'Submitting your Info. Exiting..\n'
 
-        #send_mail(user_data, level, data_submit)
+            data_submit = {}
+            if level == SELF:
+                # for person in user_data[level]:
+                #     text += '\nName: {0}, Age: {1}'.format(person.get(NAME, '-'), person.get(AGE, '-'))
+                data_submit["name"] = '{0}'.format(user_data[level].get(NAME, '-'))
+                data_submit["surname"] = '{0}'.format(user_data[level].get(SURNAME, '-'))
+                data_submit["age"] = '{0}'.format(user_data[level].get(AGE, '-'))
+                data_submit["gender"] = '{0}'.format(user_data[level].get(GENDER, '-'))
+                data_submit["nationality"] = '{0}'.format(user_data[level].get(NATIONALITY, '-'))
+                data_submit["identification_type"] = '{0}'.format(user_data[level].get(IDENTIFICATION, '-'))
+                data_submit["sa_id_number"] = '{0}'.format(user_data[level].get(SA_ID, '-'))
+                data_submit["passport"] = '{0}'.format(user_data[level].get(PASSPORT, '-'))
+                data_submit["mobile_number"] = '{0}'.format(user_data[level].get(MOBILE_NUMBER, '-'))
+                if user_data[level].get(LOCATION) and not None:
+                    gps_c = user_data[level].get(LOCATION)
+                    data_submit["location"] = {"latitude": gps_c["latitude"],
+                                               "longitude": gps_c["longitude"]}
+                else:
+                    data_submit["location"] = {}
 
-        return r_text
+            #send_mail(user_data, level, data_submit)
+
+            return r_text
 
     ud = context.user_data
-    text = prettyprint(ud, SELF)
+    text = check_data(ud, SELF)
+    print(context.user_data)
 
-    update.callback_query.edit_message_text(text=text, reply_markup=None)
-    ud[START_OVER] = False
+    if text is not 'CHECK_FAILED':
+        update.callback_query.edit_message_text(text=text, reply_markup=None)
+        ud[START_OVER] = False
 
-    return stop_nested(update, context)
+        return stop_nested(update, context)
+    else:
+        buttons = [[
+            InlineKeyboardButton(text='Back', callback_data=str(END))
+        ]]
+        keyboard = InlineKeyboardMarkup(buttons)
+
+        text = 'Submission Failed\n' + \
+               'Some of your information is missing. ' + \
+               'please ensure you capture all the required information questions.'
+        update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+        ud[START_OVER] = True
+
+        return SHOWING
 
 
 def end_second_level(update, context):
@@ -423,7 +481,9 @@ def ask_for_input(update, context):
         reply_keyboard = [[KeyboardButton(text="Send my current location", request_location=True)]]
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
         text = 'Or you can choose to send your current location from the provided button.\n' + \
-               'Please use a GPS capable mobile phone to capture the location.'
+               '- Please use a GPS capable mobile phone to capture the location.\n' + \
+               '- Note: Depending on speed of the network, this might take a while, ' + \
+               'please be patient while location information is captured'
         context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup)
 
     else:
