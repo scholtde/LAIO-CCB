@@ -1,0 +1,27 @@
+
+# systemd service file to start chatbot service
+
+[Unit]
+Description=chatbot service autostart
+Documentation=http://github.com/scholtde/LAIO-CCB
+
+[Service]
+EnvironmentFile=/home/"dir"/projects/LAIO-CCB/settings/env.txt
+Type=simple
+# Run as normal user - change to the user name you wish to run the service as
+User="username"
+#Group="groupname"
+#WorkingDirectory=/home/"dir"
+
+ExecStart=/bin/bash --rcfile /home/"dir"/.bashrc /home/"dir"/projects/LAIO-CCB/settings/execute.sh
+# Use SIGINT to stop
+KillSignal=SIGINT
+# Auto restart on crash
+Restart=on-failure
+RestartSec=15
+# Tag things in the log
+#StandardOutput=syslog
+
+[Install]
+WantedBy=multi-user.target
+
